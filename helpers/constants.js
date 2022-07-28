@@ -1,6 +1,6 @@
 export const constant = {
   http_end_point: 'http://127.0.0.1:7545', // GanacheのRPC SERVER
-  contract_address: '0x2e33e943a44A52781850fA8e3CE7361001f8a739',
+  contract_address: '0x9561A3b594b8eddB641A58C838ac374Bc0c98ddE',
   abi: [
     {
       "inputs": [

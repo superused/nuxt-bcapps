@@ -11,7 +11,7 @@ export default apiHandler({
         const from = body.from // 送信元アカウントアドレス
         const private_key = body.private_key // 送信元の秘密鍵
         const value = body.value // 送信トークン数
- 
+
         // トランザクション情報作成
         const txParams = {
           gas: web3.utils.toHex(3000000), // ガス代
@@ -19,12 +19,14 @@ export default apiHandler({
           to: constant.contract_address, // 送信先
           data: contract.methods.transferToken(to, value).encodeABI(), // コントラクト
         }
- 
+
         // 送信元の秘密鍵でsignする
-        const signedTx = await web3.eth.accounts.signTransaction(txParams, private_key)
- 
+        web3.eth.personal.unlockAccount(from, private_key)
+        // const signedTx = await web3.eth.accounts.signTransaction(txParams, private_key)
+
         // set系のコントラクトを実行
-        web3.eth.sendSignedTransaction(signedTx.rawTransaction).on('transactionHash', result => {
+        web3.eth.sendTransaction(txParams, (error, result) => {
+        // web3.eth.sendSignedTransaction(signedTx.rawTransaction).on('transactionHash', result => {
           if (result) {
             // 結果が取得できれば結果を出力
             resolve(result)
