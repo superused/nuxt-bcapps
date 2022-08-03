@@ -1,3 +1,5 @@
+import { ethers } from 'ethers'
+
 const timeout = 10000 // HTTPリクエストのタイムアウト時間
 export default function({$axios}, inject) {
   /**
@@ -45,7 +47,25 @@ export default function({$axios}, inject) {
       throw new Error(response.data.error || 'api error')
     }
   }
+
+  /**
+   * 会員登録チェック
+   */
+  const isRegistered = async () => {
+    const mnemonic = localStorage.getItem('mnemonic')
+    if (!mnemonic || !ethers.utils.isValidMnemonic(mnemonic)) return false
+    const wallet = ethers.Wallet.fromMnemonic(mnemonic)
+    const account_address = wallet.address
+    const res = await apiRequest('/api/isRegistered', {
+      account_address,
+    }, 'post').catch(e => {
+      throw new Error(e)
+    })
+    return res ? mnemonic : false
+  }
+
   // 共通関数に追加
   inject('sendRequest', sendRequest)
   inject('apiRequest', apiRequest)
+  inject('isRegistered', isRegistered)
 }

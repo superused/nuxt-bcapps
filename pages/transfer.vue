@@ -34,14 +34,19 @@
             ref="toAccount"
             v-model="toAccount"
             :rules="[() => !!toAccount || 'This field is required']"
-            :items="accounts"
             label="ToAccount"
-            placeholder="Select..."
+            placeholder="toAccount"
             required
           ></v-text-field>
         </v-card-text>
         <v-divider class="mt-12"></v-divider>
         <v-card-actions>
+          <v-btn
+            color="secondary"
+            @click="back"
+          >
+            Back
+          </v-btn>
           <v-spacer></v-spacer>
           <v-btn
             color="primary"
@@ -56,8 +61,11 @@
     </v-col>
   </v-row>
 </template>
- 
+
 <script>
+import { ethers } from 'ethers'
+import { constant } from '../helpers/constants.js'
+import { web3, contract } from '../helpers/web3.js'
 import Web3 from "web3"
 export default {
    data() {
@@ -69,7 +77,6 @@ export default {
        tokenBalance: 0,
        password: '',
        sendValue: 1,
-       accounts: [],
        toAccount: '',
        errorMessages: '',
        formHasErrors: false,
@@ -79,16 +86,24 @@ export default {
    },
    async beforeMount() {
      // 送信者アカウントアドレス
-     this.fromAccount = this.$route.params.id
-     // 送信者アカウントアドレスが渡されていなかったらアカウント一覧画面にリダイレクト
-     if (!this.fromAccount) {
-       this.$router.push('/accounts')
+     const mnemonic = await this.$isRegistered()
+     if (!mnemonic) {
+       // アカウント情報が取得できない場合トップ画面にリダイレクト
+       this.$router.replace('/top')
        return
      }
+     const wallet = await ethers.Wallet.fromMnemonic(mnemonic)
+     this.password = wallet.privateKey
+     this.fromAccount = wallet.address
+     // 送信者アカウントアドレスが渡されていなかったらアカウント一覧画面にリダイレクト
+     if (!this.fromAccount) {
+       this.$router.replace('/top')
+       return
+     }
+
      // API各々実行
-     [this.totalSupply, this.accounts, this.title, this.symbol] = await Promise.all([
+     [this.totalSupply, this.title, this.symbol] = await Promise.all([
        this.$apiRequest('/api/totalSupply'), // トークン発行量取得API
-       this.getAccountsWithoutSender(),      // 送信者以外のアカウント一覧取得API
        this.$apiRequest('/api/name'),        // トークン名取得API
        this.getSymbol(),                     // トークンシンボル取得
        this.getTokenBalance(),               // 送信者のトークン残高取得
@@ -108,13 +123,6 @@ export default {
        } else {
          alert('トークン残高の取得に失敗しました。')
        }
-     },
-     // 送信者以外のアカウント一覧取得
-     async getAccountsWithoutSender() {
-       // API実行
-       const accounts = await this.$apiRequest('/api/getAccounts')
-       // 送信者以外でフィルタ
-       return accounts.length ? accounts.filter(account => account !== this.fromAccount) : []
      },
      // 送信者のether残高取得
      async getEtherBalance() {
@@ -147,16 +155,19 @@ export default {
          return
        }
        try {
-         // トークン送信API実行
-         const res = await this.$apiRequest('/api/transferToken', {
-           from: this.fromAccount,
-           to: this.toAccount,
-           private_key: this.password,
-           value: this.sendValue,
-         }, 'post')
-         if (res) alert('送信に成功しました。')
- 
-         // トークン送信後に改めてトークン残高、Ether残高を取得
+         // トランザクション情報作成
+         const txParams = {
+           gas: web3.utils.toHex(3000000), // ガス代
+           from: this.fromAccount, // 送信元
+           to: constant.contract_address, // 送信先
+           data: contract.methods.transferToken(this.toAccount, this.sendValue).encodeABI(), // コントラクト
+         }
+         // 秘密鍵でsignする
+         const signedTx = await web3.eth.accounts.signTransaction(txParams, this.password)
+         // コントラクトにトランザクションを送信
+         const result = await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
+
+         alert('送金に成功しました。')
          this.getTokenBalance()
          this.getEtherBalance()
        } catch (e) {
@@ -164,6 +175,9 @@ export default {
          alert("送信時にエラーが発生しました。");
        }
        this.loading = false
+     },
+     back() {
+       this.$router.push('/top')
      },
      // 入力チェック
      validate() {

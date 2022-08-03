@@ -113,6 +113,11 @@ export default {
           title: 'Accounts',
           to: '/accounts'
         },
+        {
+          icon: 'mdi-apps',
+          title: 'Top',
+          to: '/top'
+        },
       ],
       miniVariant: false,
       right: true,

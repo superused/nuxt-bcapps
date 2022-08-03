@@ -97,5 +97,13 @@ export default {
       path: '/api/transferToken',
       handler: '~/server/api/transferToken.js'
     },
+    {
+      path: '/api/addUser',
+      handler: '~/server/api/addUser.js'
+    },
+    {
+      path: '/api/isRegistered',
+      handler: '~/server/api/isRegistered.js'
+    },
   ],
 }
